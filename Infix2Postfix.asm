@@ -1,5 +1,5 @@
 #=================================================================================================================#
-#			    	Tranforming infix expression to postfix expression  			    	  #		    			             
+#			    	Tranforming infix expression to postinfix expression			    	  #		    			             
 #       				  Author: Nguyen Huy Hoan (25-6-2022)       				  #			          
 #                                                     @Copyright						  #
 # Function:													  #
@@ -32,11 +32,11 @@
 # Data
 .data
 # Variable
-input:		.space 1000	# Input raw infix
-infix:		.space 1000	# Infix without space 
-postfix_:	.space 1000	# Postfix 
-postfix:	.space 1000	# Postfix without space 
-stack:		.space 1000	# Stack save values
+input:		.space 100	# Input raw infix
+infix:		.space 100	# Infix without space 
+postfix_:	.space 100	# Postfix 
+postfix:	.space 100	# Postfix without space 
+stack:		.space 100	# Stack save values
 # Message
 msg_read_infix:		.asciiz "Input expression: "
 msg_print_infix:	.asciiz "Infix expression: "
@@ -51,7 +51,6 @@ msg_error2:		.asciiz "Division can't have 0 as a divisor!"
 msg_error3:		.asciiz "Invalid expression! Check it again!"
 msg_error4:		.asciiz "Input now must be a number!"
 msg_error5:		.asciiz "Too much charaters -> Can't process!"
-msg_error6:		.asciiz "Unable to calculate!"
 msg_enter_value:	.asciiz "Value of input variable [0, 99] (0 is default): "
 
 # Code
@@ -114,22 +113,14 @@ error_mxstr:
 	j	start			# If error than request user to input again
 	nop
 		
-error_na:
-	li	$v0, 55
-	la	$a0, msg_error6
-	la	$a1, 0
-	syscall
-	j	start				# If error than request user to input again
-	nop
-		
-terminate:
+terminate:				# End program
 	li	$v0, 4
 	la	$a0, close_msg
 	syscall
 	li	$v0, 10
 	syscall	
 	
-no_input_val:
+no_input_val:				# No input availble message
 	li	$v0, 50
 	la	$a0, no_in_msg
 	syscall
@@ -139,13 +130,13 @@ no_input_val:
 	nop
 
 init_array:
-	sb	$0,  input($t0)
+	sb	$0,  input($t0)		# Reset all values
 	sb	$0,  infix($t0)
 	sb	$0,  postfix_($t0)
 	sb	$0,  postfix($t0)
 	sb	$0,  stack($t0)
 	addi	$t0, $t0, 1
-	blt	$t0, 1000, init_array
+	blt	$t0, 100, init_array
 	nop
 	jr	$ra	
 			
@@ -164,15 +155,7 @@ input_infix:
 	beq	$a1, -3, no_input_val
 	nop
 	beq	$a1, -2, terminate
-	nop
-	li	$v0, 4
-	la	$a0, msg_print_infix
-	syscall
-	li	$v0, 4
-	la	$a0, input
-	syscall	
-	j	end_input
-	nop
+	nop	
 	
 	end_input:
 		# Infix, Postfix, and Stack Params init
@@ -292,6 +275,7 @@ process_infix:
 		lb	$v1, infix($v0)
 		beq	$v1, '(', error_exp
 		jr	$ra
+		
 	check_after:
 		addi 	$v0, $s0, 1
 		lb	$v1, infix($v0)
@@ -308,6 +292,8 @@ process_infix:
 		beq	$v1, '%', error_exp
 		nop
 		beq	$v1, '^', error_exp
+		nop
+		beq	$v1, '+', return_after
 		nop
 		sge	$k0, $v1, '0'
 		sle	$k1, $v1, '9'
@@ -341,7 +327,7 @@ process_infix:
 			seq	$k0, $v1, '('		
 			seq	$k1, $v1, ')'
 			or	$k0, $k0, $k1
-			beqz	$k0 error_exp
+			beqz	$k0, error_exp
 			nop
 			j	return_after
 			nop	
@@ -491,25 +477,13 @@ process_infix:
 		addi	$s7, $s7, 1
 		j	remove_parentheses
 		nop
+		
 	end_process_infix:
-		bne	$a3, 0, error_exp		# Error since parenthesis must be in same number of close and open bracket
+		bne	$a3, 0, error_exp	# Error since parenthesis must be in same number of close and open bracket
 		nop
 		jr 	$t9
 		
 process_postfix:
-	# Print out postfix
-	print_postfix:
-		li	$v0, 4
-		la	$a0, msg_print_postfix			 
-		syscall
-		li 	$v0, 4
-		la 	$a0, postfix
-		syscall
-		li	$v0, 4
-		la	$a0, msg_enter
-		syscall
-		j	calculate_postfix
-		nop
 
 	calculate_postfix:	
         	li	$s1, 0		# postfix counter set
@@ -569,7 +543,7 @@ process_postfix:
 				nop
 				bgt 	$a0, 99, not_in_interval
 				nop		   
-				sw	$a0, 0($sp)	# => Push the number in the stack
+				sw	$a0, 0($sp)		# => Push the number in the stack
 				addi	$sp, $sp, 4
 				addi	$s1, $s1, 1
 				j	iterate_postfix
@@ -585,7 +559,7 @@ process_postfix:
 			var_con3: # Variable stand for 'a' -> 'z'
 				addi 	$v1, $0, 3
 				sle	$k0, $t0, 122
-				beq	$k0, 0, operand
+				beq	$k0, 0, operand		# If it not from 'a' -> 'z' => must be a operand
 				nop
 				li	$v0, 51
 				la	$a0, msg_enter_value
@@ -596,7 +570,7 @@ process_postfix:
 				nop
 				bgt 	$a0, 99, not_in_interval
 				nop
-				sw	$a0, 0($sp)	# => Push the number in the stack
+				sw	$a0, 0($sp)		# => Push the number in the stack
 				addi	$sp, $sp, 4
 				addi	$s1, $s1, 1
 				j	iterate_postfix
@@ -604,7 +578,7 @@ process_postfix:
 				
 			error_char: 
 				li	$v0, 55
-				la	$a0, msg_error4
+				la	$a0, msg_error4		# Value now must be a number
 				la 	$a1, 0
 				syscall
 				beq	$v1, 1, var_con1
@@ -614,7 +588,7 @@ process_postfix:
 				
 			not_in_interval:
 				li	$v0, 55
-				la	$a0, msg_error1
+				la	$a0, msg_error1		# Warning for not in interval of [0, 99]
 				la 	$a1, 0
 				syscall
 				beq	$v1, 1, var_con1
@@ -622,8 +596,8 @@ process_postfix:
 				beq	$v1, 3, var_con3
 				nop
 				
-		eliminate_space:		
-			addi	$s1, $s1, 1
+		eliminate_space: 			
+			addi	$s1, $s1, 1		# Keep to next values
 			j	iterate_postfix
 			nop
 
@@ -634,21 +608,21 @@ process_postfix:
 			sge	$k0, $t2, 48
 			sle	$k1, $t2, 57
 			and	$k0, $k0, $k1
-			beq	$k0, 1, push_number_to_stack
+			beq	$k0, 1, push_number_to_stack	# If the next values is also a number then ...
 			nop	
 		
-			addi	$t0, $t0, -48			
+			addi	$t0, $t0, -48			# Else push the previous number to stack
 			sw	$t0, 0($sp)
 			addi	$sp, $sp, 4
-			j	iterate_postfix
+			j	iterate_postfix			# Keep iterating
 			nop	
 			
 		push_number_to_stack:		
-			addi	$t0, $t0, -48
+			addi	$t0, $t0, -48				
 			addi	$t2, $t2, -48
 			mul	$t3, $t0, 10
 			add	$t3, $t3, $t2			
-			sw	$t3, 0($sp)
+			sw	$t3, 0($sp)		# Push in stack
 			addi 	$sp, $sp, 4
 			addi	$s1, $s1, 1
 			j	iterate_postfix
@@ -673,7 +647,7 @@ process_postfix:
 			nop
 			
 		div_:			
-			beq	$t7, 0, invalid_divisor	# kiem tra so bi chia khac 0
+			beq	$t7, 0, invalid_divisor		# Checking divisor whether is 0 or not
 			nop
 			div	$t6, $t6, $t7
 			sw	$t6, 0($sp)
@@ -684,7 +658,7 @@ process_postfix:
 			nop
 			
 		mod_:
-			beq	$t7, 0, invalid_divisor	# kiem tra so bi chia khac 0
+			beq	$t7, 0, invalid_divisor		# Checking divisor whether is 0 or not
 			nop
 			div	$v1, $t6, $t7
 			mul     $v1, $v1, $t7
@@ -706,16 +680,16 @@ process_postfix:
 			nop
 			
 		exp_:			
-			beq	$t7, 0, zero_power		# check so mu = 0
+			beq	$t7, 0, zero_power		# Check exponent whether is 0 or not
 			nop	
 			mul	$t5, $t5, $t6
-			slt	$s3, $s2, $t7
+			slt	$s3, $s2, $t7			# Check whether $s2 = $s7 => Exponentiation is calculated
 			addi	$s2, $s2, 1
-			beq	$s3, 1, exp_
+			beq	$s3, 1, exp_			# => Keep calculating exponentiation
 			nop
-			sw	$t5, 0($sp)
-			addi	$sp, $sp, 4
-			addi	$s1, $s1, 1
+			sw	$t5, 0($sp)			# Store value in stack 
+			addi	$sp, $sp, 4			# Stack pointer => increase
+			addi	$s1, $s1, 1			
 			addi	$t8, $t8, -1
 			j 	iterate_postfix
                 	nop
@@ -733,22 +707,40 @@ process_postfix:
                 	jr	$t9
                 
 printf:	
-	bne	$t8, 1, error_na
+	bne	$t8, 1, error_exp		# If no error occur => print
 	nop
-	li	$v0, 4
-	la	$a0, msg_print_result
-	syscall  
-	li	$v0, 1
-	lw	$t4, -4($sp)
-	move	$a0, $t4
-	syscall
-	li	$v0, 4
-	la	$a0, msg_enter
-	syscall
-	li	$v0, 50
-	la	$a0, start_again_msg
-	syscall
-	bnez	$a0, terminate
-	nop 
-	j	start
-	nop
+	print_input:				# Input
+		li	$v0, 4
+		la	$a0, msg_print_infix	
+		syscall
+		li	$v0, 4
+		la	$a0, input
+		syscall
+	print_postfix:				# Postfix
+		li	$v0, 4
+		la	$a0, msg_print_postfix			 
+		syscall
+		li 	$v0, 4
+		la 	$a0, postfix
+		syscall
+		li	$v0, 4
+		la	$a0, msg_enter
+		syscall		
+	print_result:				# Result
+		li	$v0, 4
+		la	$a0, msg_print_result
+		syscall  
+		li	$v0, 1
+		lw	$t4, -4($sp)
+		move	$a0, $t4
+		syscall
+		li	$v0, 4
+		la	$a0, msg_enter
+		syscall
+		li	$v0, 50			# Check whether start again
+		la	$a0, start_again_msg
+		syscall
+		bnez	$a0, terminate
+		nop 
+		j	start
+		nop
