@@ -302,7 +302,7 @@ process_infix:
 		nop
 		return_after:
 			beq	$s2, -1, push_op_to_stack	# If stack is empty 
-			nop					# or ( in stack then push operand to stack
+			nop					# or '(' in stack then push operand to stack
 			lb	$t1, stack($s2)
 			beq	$t1, '(', push_op_to_stack
 			nop
@@ -346,7 +346,7 @@ process_infix:
 	        nop
 	
 	consider_minus:
-		beq	$s0, 0, error_exp	     	# - must not stand first in expression, neither after other operators
+		beq	$s0, 0, error_exp	     	# '-' must not stand first in expression, neither after other operators
 		nop
 		jal	check_before
 		nop		
@@ -363,7 +363,7 @@ process_infix:
 	        
 	# Operator '*' va '/' have same precedence
 	consider_mul_div:
-		beq	$s0, 0, error_exp	     	# * and / can't stand first in expression
+		beq	$s0, 0, error_exp	     	# '*' and '/' can't stand first in expression
 		nop
 		jal	check_before
 		nop			
@@ -422,7 +422,7 @@ process_infix:
 			
 	consider_rpar:		
         	addi	$a3, $a3, -1
-        	blt	$a3, 0, error_exp			# If $a3 < 0 (May be ')' appeared before '(' ) => Wrong format 
+        	blt	$a3, 0, error_exp			# If $a3 < 0 ( May be ')' appeared before '(' ) => Wrong format 
         	nop	
 		loop_rpar:		
         		beq	$s2, -1, push_op_to_stack	# If stack is empty, push opertors to stack
