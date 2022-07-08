@@ -11,7 +11,7 @@
 #	+ Interval of [0, 99]											  #
 #	+ Dividing for 0											  #
 # 	+ Exponentiation of 0											  #
-#	+ Allow to input is variable										  #
+#	+ Allow input is variable										  #
 # 	+ Parentheses checking											  #
 #=================================================================================================================#
 
@@ -34,9 +34,8 @@
 # Variable
 input:		.space 100	# Input raw infix
 infix:		.space 100	# Infix without space 
-postfix_:	.space 100	# Postfix 
-postfix:	.space 100	# Postfix without space 
-stack:		.space 100	# Stack save values
+postfix:	.space 100	# Postfix has parenthesis
+stack:		.space 100	# Stack save operators
 # Message
 msg_read_infix:		.asciiz "Input expression: "
 msg_print_infix:	.asciiz "Infix expression: "
@@ -129,10 +128,15 @@ no_input_val:				# No input availble message
 	j	terminate
 	nop
 
+space_tab:
+	li	$s3, ' '		
+	sb	$s3, postfix($s1)
+	addi	$s1, $s1, 1
+	jr	$ra
+
 init_array:
 	sb	$0,  input($t0)		# Reset all values
 	sb	$0,  infix($t0)
-	sb	$0,  postfix_($t0)
 	sb	$0,  postfix($t0)
 	sb	$0,  stack($t0)
 	addi	$t0, $t0, 1
@@ -230,8 +234,8 @@ process_infix:
 		nop		
 		
 		# If $t0 is operators then put into postfix
-		addi 	$t8, $t8, 1
-		sb	$t0, postfix_($s1) # save byte into postfix		
+		addi 	$t8, $t8, 1			# Counting number
+		sb	$t0, postfix($s1) 					
 		addi	$s1, $s1, 1
 		# Process whether the number is in [10, 99]
 		addi	$s0, $s0, 1
@@ -242,13 +246,11 @@ process_infix:
 		and	$k0, $k0, $k1
 		beq	$k0, 1, continue	
 		nop
-		
-		# Add space to show that a number has been added
-		li	$s3, ' '		
-		sb	$s3, postfix_($s1)
-		addi	$s1, $s1, 1
+		jal	space_tab
+		nop
 		j	iterate_infix
 		nop
+		
 							
 	continue: 		
         	addi	$t3, $s0, 1			# Continue to read following values 
@@ -260,20 +262,19 @@ process_infix:
 		beq	$k0, 1, error_internal		# If there're a number then the number must has more than 3 digits => Overflow
 		nop
 		
-		sb	$t2, postfix_($s1)  		# Else load value into the postfix
+		sb	$t2, postfix($s1)  		# Else load value into the postfix
 		addi	$s1, $s1, 1
 		addi	$s0, $s0, 1
-		li	$s3, ' '		
-		sb	$s3, postfix_($s1)
-		addi	$s1, $s1, 1
-		j 	iterate_infix			# Continue to read the input
+		jal	space_tab
 		nop
-	
+		j	iterate_infix
+		nop
+		
 	# Check the component after the operators (must not null) 
 	check_before:
 		addi 	$v0, $s0, -1
 		lb	$v1, infix($v0)
-		beq	$v1, '(', error_exp
+		beq	$v1, '(', error_exp 
 		jr	$ra
 		
 	check_after:
@@ -283,7 +284,7 @@ process_infix:
 		nop
 		beq	$v1, '*', error_exp		# If there is an operator after operator (Except '+')=> Wrong format
 		nop
-		beq	$v1, '/', error_exp
+		beq	$v1, '/', error_exp 
 		nop
 		beq	$v1, ':', error_exp		
 		nop
@@ -336,12 +337,12 @@ process_infix:
 		nop	
 		jal	check_after
 		nop
-		sb	$t1, postfix_($s1)		
+		sb	$t1, postfix($s1)
+		sb	$0, stack($s2)		
 		addi	$s1, $s1, 1
 		addi	$s2, $s2, -1
-		li	$s3, ' '		
-		sb	$s3, postfix_($s1)
-		addi	$s1, $s1, 1
+		jal	space_tab
+		nop
 	        j	consider_plus	
 	        nop
 	
@@ -352,18 +353,18 @@ process_infix:
 		nop		
 		jal	check_after
 		nop
-		sb	$t1, postfix_($s1)		
+		sb	$t1, postfix($s1)
+		sb	$0, stack($s2)		
 		addi	$s1, $s1, 1
 		addi	$s2, $s2, -1
-		li	$s3, ' '		
-		sb	$s3, postfix_($s1)
-		addi	$s1, $s1, 1
+		jal	space_tab
+		nop
 	        j	consider_minus	
 	        nop
 	        
 	# Operator '*' va '/' have same precedence
 	consider_mul_div:
-		beq	$s0, 0, error_exp	     	# '*' and '/' can't stand first in expression
+		beq	$s0, 0, error_exp	     	# '*' and / can't stand first in expression
 		nop
 		jal	check_before
 		nop			
@@ -373,12 +374,12 @@ process_infix:
 		nop
 		beq	$t1, '-', push_op_to_stack
 		nop	
-		sb	$t1, postfix_($s1)
+		sb	$t1, postfix($s1)
+		sb	$0, stack($s2)
 		addi	$s2, $s2, -1
 		addi	$s1, $s1, 1
-		li	$s3, ' '		
-		sb	$s3, postfix_($s1)
-		addi	$s1, $s1, 1
+		jal	space_tab
+		nop
 		j	consider_mul_div
 		nop
 		
@@ -399,12 +400,12 @@ process_infix:
 		nop
 		beq	$t1, ':', push_op_to_stack
 		nop
-		sb	$t1, postfix_($s1)
+		sb	$t1, postfix($s1)
+		sb	$0, stack($s2)
 		addi	$s2, $s2, -1
 		addi	$s1, $s1, 1
-		li	$s3, ' '		
-		sb	$s3, postfix_($s1)
-		addi	$s1, $s1, 1
+		jal	space_tab
+		nop
 		j	consider_mod
 		nop
 	consider_exp:
@@ -414,27 +415,27 @@ process_infix:
 		nop	
 		jal	check_after
 		nop	
-		li	$s3, ' '		
-		sb	$s3, postfix_($s1)
-		addi	$s1, $s1, 1
+		jal	space_tab
+		nop
 		j	push_op_to_stack
 		nop
 			
 	consider_rpar:		
-        	addi	$a3, $a3, -1
-        	blt	$a3, 0, error_exp			# If $a3 < 0 ( May be ')' appeared before '(' ) => Wrong format 
+        	addi	$a3, $a3, -1 
+        	blt	$a3, 0, error_exp			# If $a3 < 0 (May be ')' appeared before '(' ) => Wrong format 
         	nop	
 		loop_rpar:		
         		beq	$s2, -1, push_op_to_stack	# If stack is empty, push opertors to stack
 			nop
 			lb	$t1, stack($s2)			# Else store values into postfix
-			sb	$t1, postfix_($s1)		
+			beq	$t1, '(', remove_parentheses	# If meet '(' then push operand to stack
+			nop
+			sb	$t1, postfix($s1)
+			sb	$0, stack($s2)		
 			addi	$s2, $s2, -1
 			addi	$s1, $s1, 1
-			beq	$t1, '(', push_op_to_stack	# If meet '(' then push operand to stack
-			li	$s3, ' '		
-			sb	$s3, postfix_($s1)
-			addi	$s1, $s1, 1
+			jal	space_tab
+			nop
 			j	loop_rpar			# Or continue to count store values
 			nop	
 
@@ -449,33 +450,27 @@ process_infix:
 			
 	push_op_to_stack:	
 		addi	$s2, $s2, 1			# Store into stack and countinue to iterating
-		sb	$t0, stack($s2)			
+		sb	$t0, stack($s2)		
 		addi	$s0, $s0, 1
 		j 	iterate_infix
 		nop
 
 	end_iterate_infix:	
-		beq	$s2, -1, remove_parentheses	# Remove paranthesis from the stack to store in postfix
+		beq	$s2, -1, end_process_infix	# Remove paranthesis from the stack to store in postfix
 		nop
 		lb	$t0, stack($s2)
-		sb	$t0, postfix_($s1)
+		sb	$t0, postfix($s1)
+		sb	$0, stack($s2)
 		addi	$s2, $s2, -1
 		addi	$s1, $s1, 1
 		j	end_iterate_infix
 		nop
 
 	remove_parentheses:	
-		lb	$t5, postfix_($s6)
-		addi	$s6, $s6, 1
-		beq	$t5, '(', remove_parentheses
-		nop
-		beq	$t5, ')', remove_parentheses
-		nop
-		beq	$t5, 0, end_process_infix	
-		nop
-		sb	$t5, postfix($s7)
-		addi	$s7, $s7, 1
-		j	remove_parentheses
+		sb	$0, stack($s2)
+		addi	$s2, $s2, -1
+		addi 	$s0, $s0, 1
+		j	iterate_infix
 		nop
 		
 	end_process_infix:
@@ -575,7 +570,7 @@ process_postfix:
 				addi	$s1, $s1, 1
 				j	iterate_postfix
 				nop
-				
+			
 			error_char: 
 				li	$v0, 55
 				la	$a0, msg_error4		# Value now must be a number
@@ -714,7 +709,7 @@ printf:
 		la	$a0, msg_print_infix	
 		syscall
 		li	$v0, 4
-		la	$a0, input
+		la	$a0, infix
 		syscall
 	print_postfix:				# Postfix
 		li	$v0, 4
