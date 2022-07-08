@@ -1,6 +1,5 @@
 #=================================================================================================================#
-#			    			POSTSCRIPT CNC MARSBOT			    	  		  #		    			             
-#       				  Author: Nguyen Huy Hoan (27-6-2022)       			          #			          
+#			    			POSTSCRIPT CNC MARSBOT			    	  		  #		    			             		          
 #                                                     @Copyright						  #
 #=================================================================================================================#
 
@@ -13,6 +12,7 @@
 .eqv OUT_KEYBOARD 0xFFFF0014
 
 .data
+start_again_msg:	.asciiz "Do you want to start again"
 # postscript-DCE => numpad 0
 script1:  .asciiz  "90,2000,0;180,3000,0;180,5790,1;80,500,1;70,500,1;60,500,1;50,500,1;40,500,1;30,500,1;20,500,1;10,500,1;0,500,1;350,500,1;340,500,1;330,500,1;320,500,1;310,500,1;300,500,1;290,500,1;280,490,1;90,2000,0;90,4500,0;270,500,1;260,500,1;250,500,1;240,500,1;230,500,1;220,500,1;210,500,1;200,500,1;190,500,1;180,500,1;170,500,1;160,500,1;150,500,1;140,500,1;130,500,1;120,500,1;110,500,1;100,500,1;90,900,1;90,4500,0;270,2000,1;0,5800,1;90,2000,1;180,2900,0;270,2000,1;90,3000,0;"
 
@@ -25,14 +25,26 @@ script3:  .asciiz  "90,2000,0;180,3000,0;90,1500,0;180,2800,1;0,2800,0;150,3200,
 .text
 .globl MAIN
 MAIN:
+	jal	START
+	nop
 # <--xu ly tren keymatrix-->
+START:
 	jal	INIT
 	nop
-	jal	START
-	nop	
+	jal	GLOBAL
+	nop
+	jal	PROCESS
+	nop
+	jal	TERMINATE
+	nop
+GLOBAL:
+	addi	$s3, $ra, 8
+	jr	$ra	
 INIT: 
-	li $t3, IN_KEYBOARD
-	li $t4, OUT_KEYBOARD
+	li 	$t3, IN_KEYBOARD
+	li 	$t4, OUT_KEYBOARD
+	addi 	$t6, $zero, 0
+	addi 	$t7, $zero, 0
 	NUM_0:
 		li 	$t5, 0x01 
 		sb 	$t5, 0($t3) 
@@ -58,13 +70,13 @@ INIT:
 		la	$a1, script3
 		jr	$ra
 
-START:
+PROCESS:
 	li 	$at, MOVING 
  	addi 	$k0, $zero,1 
  	sb 	$k0, 0($at) 
 	GET_DATA: 
 		addi	$t0, $zero, 0 
-		addi 	$t1, $zero, 0 	
+		addi	$t1, $zero, 0
  		GET_ROTATE:				# Đọc góc dịch chuyển 
  			add 	$t7, $a1, $t6 
 			lb 	$t5, 0($t7)  
@@ -82,7 +94,7 @@ START:
  			add 	$a0, $t0, $zero
 			jal 	ROTATE			# Load góc dịch chuyển 
 			nop
- 			addi	 $t6, $t6, 1
+ 			addi	$t6, $t6, 1
  			add 	$t7, $a1, $t6 		
 			lb 	$t5, 0($t7) 
 			beq 	$t5, 44, GET_TRACK	# Xuất hiện dấu phẩy => Chuyển đến giá trị tracking 
@@ -101,10 +113,10 @@ START:
  			addi	$t5, $t5, -48
  			beq 	$t5, 1, CUT		# Nếu có tracking ~ Marsbot cắt
  			nop
- 			j   NOT_CUT 			# Nếu không thì không cắt 
+ 			j   	NOT_CUT 			# Nếu không thì không cắt 
  			nop
  	CUT:
-		jal TRACK		# Cắt 
+		jal	TRACK		# Cắt 
 		nop
 		j	SLEEP		# Nghỉ 
 		nop
@@ -118,7 +130,7 @@ START:
  		move 	$a0, $t1	# Thời gian vẽ đường ($t1)
 		syscall
  		addi 	$t6, $t6, 2 	
- 		j 	START		# Tiếp tực vẽ 
+ 		j 	PROCESS		# Tiếp tực vẽ 
  		nop
 	TRACK: 
 		li 	$at, LEAVETRACK #  Lưu vào LEAVETRACK = 1
@@ -138,5 +150,13 @@ START:
 	END: 
 		li 	$at, MOVING	# Dừng và kết thức chương trình
  		sb 	$0, 0($at)
-		li 	$v0, 10
-		syscall
+ 		add	$at, $zero, 0
+ 		jr	$s3
+TERMINATE:
+	li	$v0, 50		# Kiểm tra xem có cần chạy lại không 
+	la	$a0, start_again_msg
+	syscall
+	beq	$a0, 0, START
+	nop
+	li 	$v0, 10
+	syscall
